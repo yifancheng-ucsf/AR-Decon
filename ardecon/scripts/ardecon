@@ -1,0 +1,340 @@
+#!/usr/bin/env bash
+
+# Usage function to display help
+print_usage() {
+	echo ""
+	echo "Usage: $(basename "$0") half-map1.mrc half-map2.mrc full-map.mrc [options]"
+	echo ""
+	echo "Required parameters:"
+	echo "  half-map1.mrc            First half-map file"
+	echo "  half-map2.mrc            Second half-map file"
+	echo "  full-map.mrc             Full map file"
+	echo ""
+	echo "Optional parameters:"
+	echo "  --mask      mask.mrc     Apply the specified mask file during dFSC calculation and deconvolution"
+	echo "  --sigma     1.0          Sigma value for generating OTF (default: auto-calculated)"
+	echo "  --smooth    0.5          Smoothing parameter for deconvolution (default: 0.5)"
+	echo "  --nonlin    10000        Nonlinearity parameter for deconvolution (default: 10000)"
+	echo "  --iter      50           Number of deconvolution cycles (default: 50)"
+	echo "  --post      method       Post-processing method (requires installation): phenix | bfactor | emready"
+	echo "  --outdir    directory    Directory to save output results (default: 'ardecon')"
+	echo "  --help                   Display this help message and exit"
+	echo ""
+	echo "Example:"
+	echo "  $(basename "$0") half-map1.mrc half-map2.mrc full-map.mrc --mask mymask.mrc --post phenix"
+	echo ""
+	exit 1
+}
+
+# Check for --help flag
+if [[ "$1" == "--help" ]]; then
+    print_usage
+    exit 0
+fi
+
+# Check the number of arguments
+if [ $# -lt 3 ]; then
+	echo "Error: Not enough arguments provided."
+	print_usage
+fi
+
+# Default values for optional arguments
+MASK_FILE=""
+SIGMA=""
+SMOOTH="0.5"
+NONLIN="10000"
+ITER="50"
+OUTDIR="ardecon"
+POST_METHOD=""
+
+# Parse arguments
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		--mask)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --mask option requires a mask file argument."
+				print_usage
+			fi
+			MASK_FILE="$2"
+			shift 2
+			;;
+		--sigma)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --sigma option requires a value."
+				print_usage
+			fi
+			SIGMA="$2"
+			shift 2
+			;;
+		--smooth)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --smooth option requires a value."
+				print_usage
+			fi
+			SMOOTH="$2"
+			shift 2
+			;;
+		--nonlin)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --nonlin option requires a value."
+				print_usage
+			fi
+			NONLIN="$2"
+			shift 2
+			;;
+		--iter)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --iter option requires a value."
+				print_usage
+			fi
+			ITER="$2"
+			shift 2
+			;;
+		--outdir)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --outdir option requires a directory name."
+				print_usage
+			fi
+			OUTDIR="$2"
+			shift 2
+			;;
+		--post)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --post option requires a method argument (phenix, bfactor, emready)."
+				print_usage
+			fi
+			POST_METHOD="$2"
+			shift 2
+			;;
+		*)
+			# Positional arguments
+			POSITIONAL+=("$1")
+			shift
+			;;
+	esac
+done
+
+# Check positional arguments
+# We expect exactly three positional arguments (half-map1, half-map2, full-map)
+if [ ${#POSITIONAL[@]} -ne 3 ]; then
+	echo "Error: You must provide three required parameters (half-map1.mrc, half-map2.mrc, full-map.mrc)."
+	print_usage
+fi
+
+HALF_MAP1=${POSITIONAL[0]}
+HALF_MAP2=${POSITIONAL[1]}
+FULL_MAP=${POSITIONAL[2]}
+
+# Check if files exist
+if [ ! -f "$HALF_MAP1" ]; then
+	echo "Error: Half-map1 file '$HALF_MAP1' does not exist."
+	exit 1
+fi
+if [ ! -f "$HALF_MAP2" ]; then
+	echo "Error: Half-map2 file '$HALF_MAP2' does not exist."
+	exit 1
+fi
+if [ ! -f "$FULL_MAP" ]; then
+	echo "Error: Full-map file '$FULL_MAP' does not exist."
+	exit 1
+fi
+
+if [ -n "$MASK_FILE" ] && [ ! -f "$MASK_FILE" ]; then
+	echo "Error: Mask file '$MASK_FILE' does not exist."
+	exit 1
+fi
+
+# Validate POST_METHOD if provided and check command availability
+if [ -n "$POST_METHOD" ]; then
+	case "$POST_METHOD" in
+		phenix)
+			# Check if 'phenix.auto_sharpen' command is available 
+			command -v phenix.auto_sharpen >/dev/null 2>&1 || { 
+				echo "Error: 'phenix.auto_sharpen' not found. Please set up environment for Phenix."; 
+				echo "Replace 'path_to_phenix' with your actual Phenix installation path and run the following command:";
+				echo "source /path_to_phenix/phenix_env.sh"
+				exit 1; 
+			}
+			;;
+		bfactor)
+			# Check if 'bfactor.exe' command is available 
+			command -v bfactor.exe >/dev/null 2>&1 || { 
+				echo "Error: 'bfactor.exe' not found. Please set up the path to bfactor.exe."; 
+				echo "Replace 'path_to_binary_of_bfactor' with your actual 'bfactor.exe' path and run the following command:";
+				echo "export PATH=/path_to_binary_of_bfactor/:\$PATH";
+				exit 1; 
+			}
+			;;
+		emready)
+			# Check if 'EMReady.sh' command is available
+			command -v EMReady.sh >/dev/null 2>&1 || { 
+				echo "Error: 'EMReady.sh' not found. Please set up environment for EMReady."; 
+				echo "Replace 'path_to_EMReady' with your actual EMReady installation path and run the following command:";
+				echo "export PATH=/path_to_EMReady/:\$PATH";
+				exit 1; 
+			}
+			;;
+		*)
+			echo "Error: Invalid post method '$POST_METHOD'. Valid options are phenix, bfactor, emready"
+			exit 1
+			;;
+	esac
+fi
+
+# Create output directory if it doesn't exist
+if [ ! -d "$OUTDIR" ]; then
+	mkdir -p "$OUTDIR" || { echo "Error: Failed to create output directory $OUTDIR"; exit 1; }
+fi
+
+# Extract rootname from full-map file by removing the .mrc extension and append "Masked" if mask is provided 
+if [ -n "$MASK_FILE" ]; then
+	ROOTNAME=$(basename "$FULL_MAP" .mrc)_Masked
+else
+	ROOTNAME=$(basename "$FULL_MAP" .mrc)
+fi
+
+OUTPUT_STEP1="${ROOTNAME}_HalfMap"
+
+# Step 1: Calculate FSC
+# If a mask is provided, we append "Mask" in the output name.
+if [ -n "$MASK_FILE" ]; then
+	if [ -s "${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc" ] ; then
+		echo "${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc already existed. Skipping dFSC calculation."
+	else
+		echo "Running dfsc-0.0.1.py with a mask ..."
+		dfsc-0.0.1.py --mask "$MASK_FILE" "$HALF_MAP1" "$HALF_MAP2" --output "${OUTDIR}/${OUTPUT_STEP1}" || \
+		{ echo "Error: Failed to run dfsc-0.0.1.py"; exit 1; }
+	fi
+else
+	if [ -s "${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc" ]; then
+		echo "${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc already existed. Skipping dFSC calculation."
+	else
+		echo "Running dfsc-0.0.1.py without a mask ..."
+		dfsc-0.0.1.py "$HALF_MAP1" "$HALF_MAP2" --output "${OUTDIR}/${OUTPUT_STEP1}" || \
+		{ echo "Error: Failed to run dfsc-0.0.1.py"; exit 1; }
+	fi
+fi
+
+# After dfsc-0.0.1, we expect two output files (based on the given naming conventions):
+#	${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc and ${OUTDIR}/${OUTPUT_STEP1}dFSCAvg.txt
+#
+# Example filenames:
+#	If mask is given: full-map_Masked_HalfMapdFSC3d.mrc and full-map_Masked_HalfMapdFSCAvg.txt
+#	If no mask: full-map_HalfMapdFSC3d.mrc and full-map_HalfMapdFSCAvg.txt
+#
+# Step 2: Generate OTF
+OTF_INPUT_MRC="${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc"
+OTF_INPUT_TXT="${OUTDIR}/${OUTPUT_STEP1}dFSCAvg.txt"
+OTF_OUTPUT="${OUTDIR}/${OUTPUT_STEP1}dFSC3d.otf"
+
+if [ ! -f "$OTF_INPUT_MRC" ]; then
+	echo "Error: Expected input file '$OTF_INPUT_MRC' from step 1 not found."
+	exit 1
+fi
+if [ ! -f "$OTF_INPUT_TXT" ]; then
+	echo "Error: Expected input file '$OTF_INPUT_TXT' from step 1 not found."
+	exit 1
+fi
+
+echo "Generating OTF ..."
+if [ -n "$SIGMA" ]; then
+	OTF_PRINT=$(gen_tf_withPSF.py --mask "$OTF_INPUT_MRC" --fsc "$OTF_INPUT_TXT" --sigma "$SIGMA" --output "$OTF_OUTPUT") || \
+	{ echo "Error: Failed to generate OTF"; exit 1; }
+	echo "Sigma: ${SIGMA}"
+else
+	OTF_PRINT=$(gen_tf_withPSF.py --mask "$OTF_INPUT_MRC" --fsc "$OTF_INPUT_TXT" --output "$OTF_OUTPUT") || \
+	{ echo "Error: Failed to generate OTF"; exit 1; }
+	SIGMA=$(echo "$OTF_PRINT" | grep 'sigma' | awk '{print $2}')
+	echo "Sigma: ${SIGMA}"
+fi
+RESOLUTION=$(echo "$OTF_PRINT" | grep 'resolution' | awk '{print $2}')
+
+# Step 3: Perform deconvolution
+if [ ! -f "$OTF_OUTPUT" ]; then
+	echo "Error: OTF file '$OTF_OUTPUT' not found."
+	exit 1
+fi
+
+if [ -n "$MASK_FILE" ]; then
+	applymask.py "$FULL_MAP" --mask "$MASK_FILE" || \
+	{ echo "Error: Failed to apply mask to full-map"; exit 1; }
+	if [ "${OUTDIR}" != "." ]; then
+		mv ${ROOTNAME}.mrc ${OUTDIR}
+	fi
+	DECON_INPUT="${OUTDIR}/${ROOTNAME}.mrc"
+else
+	DECON_INPUT="$FULL_MAP"
+fi
+
+DECON_OUTPUT="${OUTDIR}/${ROOTNAME}_Decon.mrc"
+DECON_LOG="${OUTDIR}/${ROOTNAME}_Decon.log"
+# Run core2_decon to check which one works
+DECON_D=$(core2_decon 2> >(tee -a "$DECON_LOG"))
+DECON_S=$(core2_decon_static 2> >(tee -a "$DECON_LOG"))
+if echo "$DECON_D" | grep "usage: core2_decon measurement result CTF" >/dev/null 2>&1 ; then
+	DECON_BIN="core2_decon"
+elif echo "$DECON_S" | grep "usage: core2_decon measurement result CTF" >/dev/null 2>&1 ; then
+	DECON_BIN="core2_decon_static"
+else
+	echo "Error: Failed to run core2_decon, see $DECON_LOG"; exit 1;
+fi
+
+if [ -s "$DECON_OUTPUT" ]; then
+	echo "$DECON_OUTPUT already existed. Skipping deconvolution."
+else
+	echo "Running deconvolution with $DECON_BIN ..."
+	echo "Parameters: Smoothing=$SMOOTH, Nonlinearity=$NONLIN, Iterations=$ITER"
+	( time "$DECON_BIN" \
+	"$DECON_INPUT" \
+	"$DECON_OUTPUT" \
+	"$OTF_OUTPUT" \
+	-alpha="$NONLIN" -lamratio=0:1 -lamf="$SMOOTH" -lampc=0 -lampos=1 \
+	-lamsmooth=100 -laml2=0 -cuth=0.001 -na=1.4 -nimm=1.512 -ncycl="$ITER" \
+	-nzpad=512 -omega=0.8 -sub=1:1:1:1:1 -tol=0.0001 -np=4 \
+	-guess="" \
+	-linesearch="2014" -regtype="ma" ) \
+	>"$DECON_LOG" 2>&1
+	if [ -s "$DECON_OUTPUT" ]; then
+		echo "Deconvolution is complete."
+	else
+		echo "Error: Failed to run core2_decon, see $DECON_LOG"; exit 1;
+	fi
+fi
+
+# Step 4: Post-processing if specified
+POST_OUTPUT="${OUTDIR}/${ROOTNAME}_Decon_${POST_METHOD}.mrc"
+POST_LOG="${OUTDIR}/${ROOTNAME}_Decon_${POST_METHOD}.log"
+if [ -n "$POST_METHOD" ]; then
+	case "$POST_METHOD" in
+		phenix)
+			# Replace this with the actual phenix command or script you wish to run
+			echo "Running post-processing with phenix.auto_sharpen ..."
+			phenix.auto_sharpen "$DECON_OUTPUT" resolution=$RESOLUTION sharpened_map_file="$POST_OUTPUT" \
+			sharpened_map_coeffs_file="${POST_OUTPUT%.mrc}_coeffs.mtz" > "$POST_LOG" || \
+			{ echo "Error: Failed to run phenix.auto_sharpen"; exit 1; }
+			;;
+		bfactor)
+			# Replace this with the actual bfactor command or script
+			echo "Running post-processing with bfactor.exe ..."
+			bfactor.exe <<- EOF > "$POST_LOG" || { echo "Error: Failed to run bfactor.exe"; exit 1; }
+				M
+				$DECON_OUTPUT
+				$POST_OUTPUT
+				*					   !Pixel size
+				20.0,$RESOLUTION	   !Resolution range to fit B-factor (low, high)
+				*					   !B-factor to be applied
+				2					   !Low-pass filter option (1=Gaussian, 2=Cosine edge)
+				$RESOLUTION			   !Filter radius
+				5					   !Width of cosine edge (if cosine edge used)
+				EOF
+			;;
+		emready)
+			# Replace this with the actual emready command or script
+			echo "Running post-processing with emready ..."
+			EMReady.sh "$DECON_OUTPUT" "$POST_OUTPUT" > "$POST_LOG" || \
+			{ echo "Error: Failed to run EMReady.sh"; exit 1; }
+			;;
+	esac
+	echo "Post-processing is complete."
+fi

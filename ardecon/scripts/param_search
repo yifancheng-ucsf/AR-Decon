@@ -1,0 +1,244 @@
+#!/usr/bin/env bash
+
+# Usage function to display help
+print_usage() {
+    echo ""
+    echo "Usage: $(basename "$0") full-map.mrc reference.mrc HalfMapdFSC3d.otf [options]"
+    echo ""
+    echo "Required parameters:"
+    echo "  full-map.mrc                Full map file"
+    echo "  reference.mrc               Map derived from a model"
+    echo "  HalfMapdFSC3d.otf           OTF file for deconvolution (can be generated using ardecon)"
+    echo ""
+    echo "Optional parameters:"
+    echo "  --mask      mask.mrc        Apply a mask file during dFSC calculation"
+    echo "  --iter      20              Number of deconvolution cycles (default: 20)"
+    echo "  --smooth    \"5e-1 1 2\"      Set of smoothing parameters to test"
+    echo "                                (default: \"5e-3 1e-2 2e-2 5e-2 1e-1 2e-1 5e-1 1 2 5 1e1 2e1 5e1 1e2\")"
+    echo "  --nonlin    \"1 1e1 1e2\"     Set of nonlinearity parameters to test"
+    echo "                                (default: \"1 1e1 1e2 1e3 1e4 1e5 1e6 1e7\")"
+    echo "  --outdir    ParamSearch     Output directory for results (default: 'ParamSearch')"
+    echo "  --cone      \"0 0 60\"        Specify a cone for coloring dFSC curves"
+    echo "                                - 'alpha' and 'beta' are Euler angles defining the cone symmetry axis"
+    echo "                                - 'apex' is the cone's apex angle"
+    echo "                                (default: none)"
+    echo "  --help                      Display this help message and exit"
+    echo ""
+    echo "Examples:"
+    echo "  $(basename "$0") full-map.mrc reference.mrc HalfMapdFSC3d.otf"
+    echo "  $(basename "$0") full-map.mrc reference.mrc HalfMapdFSC3d.otf \\"
+    echo "      --mask mymask.mrc --smooth \"5e-1 1 2 5 1e1\" --nonlin \"1 1e1 1e2\" --cone \"0 0 60\""
+    echo ""
+    exit 1
+}
+
+# Check for --help flag
+if [[ "$1" == "--help" ]]; then
+    print_usage
+    exit 0
+fi
+
+# Check the number of arguments
+if [ $# -lt 3 ]; then
+	echo "Error: Not enough arguments provided."
+	print_usage
+fi
+
+# Default values for optional arguments
+MASK_FILE=""
+ITER="20"
+SMOOTH_SET="5e-3 1e-2 2e-2 5e-2 1e-1 2e-1 5e-1 1 2 5 1e1 2e1 5e1 1e2"
+NONLIN_SET="1 1e1 1e2 1e3 1e4 1e5 1e6 1e7"
+OUTDIR="ParamSearch"
+CONE_SET=""
+
+# Parse arguments
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		--mask)
+			# Check if next argument exists and is not another option
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --mask option requires a mask file argument."
+				print_usage
+			fi
+			MASK_FILE="$2"
+			shift 2
+			;;
+		--iter)
+			# Check if next argument exists and is not another option
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --iter option requires a value."
+				print_usage
+			fi
+			SIGMA="$2"
+			shift 2
+			;;
+		--outdir)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --outdir option requires a directory name."
+				print_usage
+			fi
+			OUTDIR="$2"
+			shift 2
+			;;
+		--smooth)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --smooth option requires a quoted list of values separated by spaces."
+				print_usage
+			fi
+			SMOOTH_SET="$2"
+			if [[ $# -gt 2 && ! "$3" =~ ^-- ]]; then
+				echo "Error: --smooth values must be quoted (e.g., --smooth \"5e-1 1 2\")"
+				print_usage
+			fi
+			shift 2
+			;;
+		--nonlin)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --nonlin option requires a quoted list of values separated by spaces."
+				print_usage
+			fi
+			NONLIN_SET="$2"
+			if [[ $# -gt 2 && ! "$3" =~ ^-- ]]; then
+				echo "Error: --nonlin values must be quoted (e.g., --nonlin \"1 1e1 1e2\")"
+				print_usage
+			fi
+			shift 2
+			;;
+		--cone)
+			if [[ -z "$2" || "$2" =~ ^-- ]]; then
+				echo "Error: --cone option requires a quoted list of values separated by spaces."
+				print_usage
+			fi
+			CONE_SET="$2"
+			if [[ $# -gt 2 && ! "$3" =~ ^-- ]]; then
+				echo "Error: --cone values must be quoted (e.g., --cone \"0 0 60\")"
+				print_usage
+			fi
+			shift 2
+			;;
+		*)
+			# Positional arguments
+			POSITIONAL+=("$1")
+			shift
+			;;
+	esac
+done
+
+# Check positional arguments
+# We expect exactly three positional arguments (full-map.mrc reference.mrc HalfMapdFSC3d.otf)
+if [ ${#POSITIONAL[@]} -ne 3 ]; then
+	echo "Error: You must provide three required parameters (full-map.mrc reference.mrc HalfMapdFSC3d.otf)."
+	print_usage
+fi
+
+FULL_MAP=${POSITIONAL[0]}
+REF_MAP=${POSITIONAL[1]}
+OTF=${POSITIONAL[2]}
+
+# Check if files exist
+if [ ! -f "$FULL_MAP" ]; then
+	echo "Error: full-map file '$FULL_MAP' does not exist."
+	exit 1
+fi
+if [ ! -f "$REF_MAP" ]; then
+	echo "Error: reference map file '$REF_MAP' does not exist."
+	exit 1
+fi
+if [ ! -f "$OTF" ]; then
+	echo "Error: OTF file '$OTF' does not exist. Generate the OTF file using the script ardecon."
+	exit 1
+fi
+
+if [ -n "$MASK_FILE" ] && [ ! -f "$MASK_FILE" ]; then
+	echo "Error: Mask file '$MASK_FILE' does not exist."
+	exit 1
+fi
+
+# Remove trailing / from a directory name
+OUTDIR=${OUTDIR%/}
+
+if [ ! -d "$OUTDIR" ]; then
+	mkdir "$OUTDIR" || { echo "Cannot create output directory ${OUTDIR}" ; exit 1 ; }
+fi
+
+# Make a directory for the deconvolution results
+DECON_DIR="${OUTDIR}/Deconvolution"
+if [ ! -d "$DECON_DIR" ]; then
+	mkdir "$DECON_DIR" || { echo "Cannot create output directory ${DECON_DIR}" ; exit 1 ; }
+fi
+
+# Make a directory for the dFSC results
+DFSC_DIR="${OUTDIR}/Map2ModeldFSC"
+if [ ! -d "$DFSC_DIR" ]; then
+	mkdir "$DFSC_DIR" || { echo "Cannot create output directory ${DFSC_DIR}" ; exit 1 ; }
+fi
+
+DECON_D=$(core2_decon 2> >(tee -a "${OUTDIR}/decon.log"))
+DECON_S=$(core2_decon_static 2> >(tee -a "${OUTDIR}/decon.log"))
+if echo "$DECON_D" | grep "usage: core2_decon measurement result CTF" >/dev/null 2>&1 ; then
+	DECON_BIN="core2_decon"
+elif echo "$DECON_S" | grep "usage: core2_decon measurement result CTF" >/dev/null 2>&1 ; then
+	DECON_BIN="core2_decon_static"
+else
+	echo "Error: Failed to run core2_decon, see ${OUTDIR}/decon.log"; exit 1;
+fi
+
+declare -A DFSC_LOGS
+
+for SMOOTH in ${SMOOTH_SET} ; do
+	for NONLIN in ${NONLIN_SET} ; do
+
+		ROOTNAME="${SMOOTH}_${NONLIN}"
+		DECON_OUTPUT="${DECON_DIR}/${ROOTNAME}.mrc"
+		DECON_LOG="${DECON_DIR}/${ROOTNAME}.log"
+		OPLOT_FILE="${DECON_DIR}/${ROOTNAME}.plt"
+		DFSC_OUTPUT="${DFSC_DIR}/${ROOTNAME}_dFSC3d.mrc"
+
+		if [ -f "$DECON_OUTPUT" ]; then
+			echo "  Skipping deconvolution, as ${DECON_OUTPUT} already exists."
+		else
+			echo "Running deconvolution with Smoothing=${SMOOTH} and Nonlinearity=${NONLIN} ..."
+			( time $DECON_BIN \
+			"$FULL_MAP" \
+			"$DECON_OUTPUT" \
+			"$OTF" \
+			-lamf="$SMOOTH" -alpha="$NONLIN" -lampc=0 -ncycl="$ITER"  \
+			-np=4 -oplotfile="$OPLOT_FILE") \
+			>"$DECON_LOG" 2>&1 || { echo "Error running core2_decon"; exit 1; }
+		fi
+
+		if [ -f "$DFSC_OUTPUT" ]; then
+			echo "  Skipping dFSC calculation, as ${DFSC_OUTPUT} already exists."
+		else
+			echo "Calculating dFSC for ${DECON_OUTPUT} ..."
+			if [ -n "$MASK_FILE" ]; then
+				dfsc-0.0.1.py "$REF_MAP" "$DECON_OUTPUT" --mask "$MASK_FILE" --output "${DFSC_DIR}/${ROOTNAME}_" > "${DFSC_DIR}/${ROOTNAME}_dFSC.log" 2>&1 &
+			else
+				dfsc-0.0.1.py "$REF_MAP" "$DECON_OUTPUT" --output "${DFSC_DIR}/${ROOTNAME}_" > "${DFSC_DIR}/${ROOTNAME}_dFSC.log" 2>&1 &
+			fi
+			DFSC_PID=$!
+			DFSC_LOGS[$DFSC_PID]="${DFSC_DIR}/${ROOTNAME}_dFSC.log"
+		fi
+	done
+done
+
+for PID in "${!DFSC_LOGS[@]}"; do
+	wait $PID || { echo "Error running dfsc-0.0.1.py, see ${DFSC_LOGS[$PID]}."; exit 1; }
+done
+
+echo "Deconvolution and dFSC calculation are complete."
+
+echo "Combining dFSC results into a single file ..."
+
+if [ -n "$CONE_SET" ]; then
+	dfsc-combine.py --input_dir $DFSC_DIR --smooth_set "$SMOOTH_SET" --nonlin_set "$NONLIN_SET" --cone $CONE_SET --output "${OUTDIR}/Combined" > "${OUTDIR}/combine.log" 2>&1 || \
+	{ echo "Error running dfsc-combine.py with cone set, see ${OUTDIR}/combine.log."; exit 1; }
+else
+	dfsc-combine.py --input_dir $DFSC_DIR --smooth_set "$SMOOTH_SET" --nonlin_set "$NONLIN_SET" --output "${OUTDIR}/Combined" > "${OUTDIR}/combine.log" 2>&1 || \
+	{ echo "Error running dfsc-combine.py, see ${OUTDIR}/combine.log."; exit 1; }
+fi
+
+echo "Combining dFSC results is complete."
+
