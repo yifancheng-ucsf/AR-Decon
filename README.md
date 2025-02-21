@@ -5,7 +5,7 @@ AR-Decon, which stands for correcting **A**nisotropic **R**esolution by **Decon*
 ### 1. Install Conda
 AR-Deon is a Linux-based program. Ensure that you have either Miniconda or Anaconda installed on your Linux distribution. It is recommended to install Miniconda by following these [instructions](https://docs.anaconda.com/miniconda/).
 ### 2. Set Up a Python Environment and Install AR-Decon
-Create a Python environment named `ardecon using `conda` and install AR-Decon.
+Create a Python environment named `ardecon` using `conda` and install AR-Decon.
 ```bash
 git clone git@github.com:yifancheng-ucsf/AR-Decon.git
 cd AR-Decon
