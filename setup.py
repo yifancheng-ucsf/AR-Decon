@@ -5,7 +5,7 @@ so_files = [os.path.join(lib_dir, f) for f in os.listdir(lib_dir) if ".so" in f]
 
 setup(
     name='ardecon',
-    version='0.8.0',
+    version='0.9.0',
     description="A deconvolution pipeline for anisotropic resolution",
     author="Junrui Li",
     author_email="cheng_lab@ucsf.edu",
