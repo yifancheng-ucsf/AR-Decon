@@ -7,7 +7,7 @@ AR-Deon is a Linux-based program. Ensure that you have either Miniconda or Anaco
 ### 2. Set Up a Python Environment and Install AR-Decon
 Create a Python environment named `ardecon` using `conda` and install AR-Decon.
 ```bash
-git clone git@github.com:yifancheng-ucsf/AR-Decon.git
+git clone https://github.com/yifancheng-ucsf/AR-Decon.git
 cd AR-Decon
 conda env create -f environment.yml
 conda activate ardecon
