@@ -26,6 +26,8 @@ ardecon half-map1.mrc half-map2.mrc full-map.mrc --mask mymask.mrc
 ```
 After the command completes, the deconvolution result can be found in the `ardecon` directory (can be customized, see [Advanced Usage](#advanced-usage-parameter-optimization)), with a filename ending in `_Decon.mrc`.
 
+**Note**: For detailed instructions with comprehensive examples, refer to the [**Tutorial**](tutorial/Tutorial.md).
+
 ## Extended Usage (Post-Processing After Deconvolution)
 The map after deconvolution can be post processed using Phenix (`phenix.auto_sharpen`) , bfactor (`befactor.exe`), or EMReady (`EMReady.sh`). However, if the map is too noisy, sharpening after deconvolution may not be effective. Based on our experience, AR-Decon works well with EMReady, as demonstrated in our paper.
 
