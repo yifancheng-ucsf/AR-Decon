@@ -18,6 +18,7 @@ After installing AR-Decon, **reactivate the environment** to ensure it is fully 
 ```bash
 conda deactivate && conda activate ardecon
 ```
+**Note**: AR-Decon is now integrated into [SBGrid](https://sbgrid.org/software/titles/ar-decon) and [COSMIC<sup>2</sup>](https://cosmic2.sdsc.edu:8443/gateway/tools.action). Users can also access AR-Decon through either of these platforms without the need for a separate installation.
 
 ## Quick Start
 To run AR-Decon, use the command: **`ardecon`**.  **It requires two half-maps and a full map as input**. The full map can be either sharpened or unsharpened — you may experiment with both to see which produces better results. Using a soft-edged mask is recommended for optimal performance. A common usage example is shown below:
