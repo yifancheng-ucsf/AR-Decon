@@ -187,11 +187,12 @@ if [ ! -d "$OUTDIR" ]; then
 	mkdir -p "$OUTDIR" || { echo "Error: Failed to create output directory $OUTDIR"; exit 1; }
 fi
 
-# Extract rootname from full-map file by removing the .mrc extension and append "Masked" if mask is provided 
+# Extract rootname from full-map file by removing the extension and append "Masked" if mask is provided
+EXT=".${FULL_MAP##*.}" 
 if [ -n "$MASK_FILE" ]; then
-	ROOTNAME=$(basename "$FULL_MAP" .mrc)_Masked
+	ROOTNAME=$(basename "$FULL_MAP" "$EXT")_Masked
 else
-	ROOTNAME=$(basename "$FULL_MAP" .mrc)
+	ROOTNAME=$(basename "$FULL_MAP" "$EXT")
 fi
 
 OUTPUT_STEP1="${ROOTNAME}_HalfMap"

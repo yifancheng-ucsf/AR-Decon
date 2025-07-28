@@ -24,7 +24,7 @@ args = parser.parse_args()
 original = Mrc.bindFile(args.mrc)
 orig_data = original
 # print(orig_data.shape)
-save_name = os.path.basename(args.mrc)
+save_name = os.path.splitext(os.path.basename(args.mrc))[0] + ".mrc"
 
 if args.mask is not None:
     mask = Mrc.bindFile(args.mask)
