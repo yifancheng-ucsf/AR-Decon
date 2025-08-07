@@ -1,5 +1,12 @@
-# AR-Decon: Deconvolution to restore cryo-EM maps with anisotropic resolution
+# AR-Decon: Deconvolution to restore cryo-EM maps with anisotropic resolution <!-- omit in toc -->
 AR-Decon, which stands for correcting **A**nisotropic **R**esolution by **Decon**volution, is a computational pipeline designed to enhance the quality of three-dimensional maps that suffer from anisotropic resolutions, often resulting from datasets with preferred orientations. By applying advanced deconvolution techniques, AR-Decon corrects these resolution discrepancies, leading to more accurate and isotropic 3D maps.
+
+## Table of Contents <!-- omit in toc -->
+- [System Requirements](#system-requirements)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Extended Usage (Post-Processing After Deconvolution)](#extended-usage-post-processing-after-deconvolution)
+- [Advanced Usage (Parameter Optimization)](#advanced-usage-parameter-optimization)
 
 ## System Requirements
 ### 1. Hardware Requirements
