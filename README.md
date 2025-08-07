@@ -1,11 +1,22 @@
 # AR-Decon: Deconvolution to restore cryo-EM maps with anisotropic resolution
 AR-Decon, which stands for correcting **A**nisotropic **R**esolution by **Decon**volution, is a computational pipeline designed to enhance the quality of three-dimensional maps that suffer from anisotropic resolutions, often resulting from datasets with preferred orientations. By applying advanced deconvolution techniques, AR-Decon corrects these resolution discrepancies, leading to more accurate and isotropic 3D maps.
 
+## System Requirements
+### 1. Hardware Requirements
+AR-Decon is a CPU-based program and does not require a GPU. By default, it utilizes 4 CPU cores for parallel processing and consumes approximately 3 GB of RAM for a map with a box size of 256. For optimal performance, the following hardware specifications are recommended:
+- RAM: 16 GB or more
+- CPU: 8 or more cores, 4.0 GHz per core or higher
+
+### 2. Operating Systems Requirements
+AR-Decon requires a Linux-based operating system for proper execution. The program has been tested on the following Linux distributions:
+- CentOS 7.6.1810 and 7.9.2009
+- Ubuntu 20.04.6 LTS
+
 ## Installation
 ### 1. Install Conda
-AR-Deon is a Linux-based program. Ensure that you have either Miniconda or Anaconda installed on your Linux distribution. It is recommended to install Miniconda by following these [instructions](https://docs.anaconda.com/miniconda/).
+Ensure that you have either Miniconda or Anaconda installed on your Linux distribution. It is recommended to install Miniconda by following these [instructions](https://docs.anaconda.com/miniconda/).
 ### 2. Set Up a Python Environment and Install AR-Decon
-Create a Python environment named `ardecon` using `conda` and install AR-Decon.
+Create a Python environment named `ardecon` using `conda` and install AR-Decon. Installation typically completes within 10 minutes.
 ```bash
 git clone https://github.com/yifancheng-ucsf/AR-Decon.git
 cd AR-Decon
@@ -25,7 +36,7 @@ To run AR-Decon, use the command: **`ardecon`**.  **It requires two half-maps an
 ```bash
 ardecon half-map1.mrc half-map2.mrc full-map.mrc --mask mymask.mrc
 ```
-After the command completes, the deconvolution result can be found in the `ardecon` directory (can be customized, see [Advanced Usage](#advanced-usage-parameter-optimization)), with a filename ending in `_Decon.mrc`.
+The runtime of the command scales with the map’s box size. As a reference, processing a map with a box size of 256 typically takes approximately 5 minutes. After the command completes, the deconvolution result can be found in the `ardecon` directory (can be customized, see [Advanced Usage](#advanced-usage-parameter-optimization)), with a filename ending in `_Decon.mrc`.
 
 **Note**: For detailed instructions with comprehensive examples, refer to the [**Tutorial**](tutorial/Tutorial.md).
 
