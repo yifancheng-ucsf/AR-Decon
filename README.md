@@ -14,7 +14,7 @@ AR-Decon is a CPU-based program and does not require a GPU. By default, it utili
 - RAM: 16 GB or more
 - CPU: 8 or more cores, 4.0 GHz per core or higher
 
-### 2. Operating Systems Requirements
+### 2. Operating System Requirements
 AR-Decon requires a Linux-based operating system for proper execution. The program has been tested on the following Linux distributions:
 - CentOS 7.6.1810 and 7.9.2009
 - Ubuntu 20.04.6 LTS
