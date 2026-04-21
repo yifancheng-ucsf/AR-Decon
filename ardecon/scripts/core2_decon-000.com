@@ -42,7 +42,7 @@ echo Running on `hostname` >"${root}_Decon.log"
  "${tf}" \
  -alpha=10000 -lamratio=0:1 -lamf=0.5 -lampc=0 -lampos=1 \
  -lamsmooth=100 -laml2=0 -cuth=0.001 -na=1.4 -nimm=1.512 -ncycl=${iter} \
- -nzpad=512 -omega=0.8 -sub=1:1:1:1:1 -tol=0.0001 -np=4 \
+ -omega=0.8 -sub=1:1:1:1:1 -tol=0.0001 -np=4 \
  -guess="" \
  -linesearch="2014" -regtype="ma" ) \
  >>"${root}_Decon.log" 2>&1 ||
@@ -52,7 +52,7 @@ echo Running on `hostname` >"${root}_Decon.log"
  "${tf}" \
  -alpha=10000 -lamratio=0:1 -lamf=0.5 -lampc=0 -lampos=1 \
  -lamsmooth=100 -laml2=0 -cuth=0.001 -na=1.4 -nimm=1.512 -ncycl=${iter} \
- -nzpad=512 -omega=0.8 -sub=1:1:1:1:1 -tol=0.0001 -np=4 \
+ -omega=0.8 -sub=1:1:1:1:1 -tol=0.0001 -np=4 \
  -guess="" \
  -linesearch="2014" -regtype="ma" ) \
  >>"${root}_Decon.log" 2>&1
