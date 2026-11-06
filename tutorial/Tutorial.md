@@ -18,6 +18,8 @@
 ## Introduction
 AR-Decon (**A**nisotropic **R**esolution **Decon**volution) is a tool for correcting anisotropic resolutions in cryo-EM maps. This tutorial walks you through how to use AR-Decon to improve the quality of maps with anisotropic resolutions.
 
+AR-Decon estimates the optical transfer function (OTF) of a cryo-EM map from the directional FSC of its half-maps, and then deconvolves the map with **ER-Decon II** (Arigovindan *et al.*, *PNAS* 2013), the deconvolution engine of AR-Decon (the program `core2_decon`). If you use AR-Decon in your work, please cite both the ER-Decon paper and the AR-Decon paper; see [How to Cite](https://github.com/yifancheng-ucsf/AR-Decon#how-to-cite).
+
 In this tutorial, we'll use an influenza hemagglutinin (HA) trimer as our example dataset. You'll learn how to:
 * Set up AR-Decon
 * Prepare data correctly
@@ -26,7 +28,7 @@ In this tutorial, we'll use an influenza hemagglutinin (HA) trimer as our exampl
 
 
 ## Setting Up AR-Decon
-Before starting, make sure you have `AR-Decon` installed following the [GitHub instruction](https://github.com/yifancheng-ucsf/AR-Decon), and activated the python environment `ardecon`. If you see `(ardecon)` in front of your Linux BASH prompt, you are all set. Otherwise, you need to run the following command to activate `ardecon` environment.
+Before starting, make sure you have `AR-Decon` and its deconvolution engine ER-Decon II installed following the [GitHub instruction](https://github.com/yifancheng-ucsf/AR-Decon#installation), and activated the python environment `ardecon`. If you see `(ardecon)` in front of your Linux BASH prompt, you are all set. Otherwise, you need to run the following command to activate `ardecon` environment.
 ```bash
 conda activate ardecon
 ```
@@ -175,5 +177,6 @@ AR-Decon_Tutorial/
 Common issues and solutions:
 * **Environment activation fails**: Make sure you've installed AR-Decon following the GitHub instructions
 * **"Command not found" errors**: Check that the conda environment is activated
+* **"Failed to run core2_decon"**: ER-Decon II is not installed in the active environment; build it as described in the [Installation](https://github.com/yifancheng-ucsf/AR-Decon#installation) section (`which core2_decon` should print a path inside the environment)
 * **Directory not found**: Make sure you're in the correct working directory
 * **Post-processing fails**: Verify that the post-processing tools are installed at the specified paths

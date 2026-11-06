@@ -1,0 +1,18 @@
+# Builds ER-Decon II (the deconvolution engine, core2_decon), installs AR-Decon,
+# and runs the pipeline on a small synthetic map so that every script is exercised.
+name: ci
+on: [push, pull_request]
+jobs:
+  pipeline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with: { repository: Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II, path: ER-DECON-II }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.10" }
+      - run: sudo apt-get update && sudo apt-get install -y libfftw3-dev
+      - run: pip install "numpy<2" scipy matplotlib
+      - run: make -C ER-DECON-II -j2 && make -C ER-DECON-II check && sudo make -C ER-DECON-II install PREFIX=/usr/local
+      - run: pip install .
+      - run: python tests/make_small_test_maps.py small && MPLBACKEND=Agg ardecon small/half1.mrc small/half2.mrc small/full.mrc --mask small/mask.mrc --iter 3 --seed 1 --outdir small/out && test -s small/out/full_Masked_Decon.mrc

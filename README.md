@@ -1,12 +1,32 @@
 # AR-Decon: Deconvolution to restore cryo-EM maps with anisotropic resolution <!-- omit in toc -->
 AR-Decon, which stands for correcting **A**nisotropic **R**esolution by **Decon**volution, is a computational pipeline designed to enhance the quality of three-dimensional maps that suffer from anisotropic resolutions, often resulting from datasets with preferred orientations. By applying advanced deconvolution techniques, AR-Decon corrects these resolution discrepancies, leading to more accurate and isotropic 3D maps.
 
+**The deconvolution engine of AR-Decon is ER-Decon II** (entropy-regularized deconvolution; Arigovindan *et al.*, *PNAS* 2013), developed by Muthuvel Arigovindan and colleagues in the laboratories of John W. Sedat and David A. Agard at UCSF. ER-Decon II performs the central restoration step: its regularization and restoration methodology reconstructs the map. AR-Decon adds what is needed to apply it to cryo-EM maps:
+- estimation of the optical transfer function (OTF) of a cryo-EM map from the directional FSC (dFSC) of its two half-maps;
+- the cryo-EM processing workflow around the deconvolution: masking, running ER-Decon II with parameters suited to cryo-EM maps, optional post-processing, and a parameter search based on map-to-model dFSC.
+
+ER-Decon II is the program `core2_decon`, built from the [ER-Decon II repository](https://github.com/Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II) during installation.
+
+> **Please cite both papers** when you use AR-Decon: the ER-Decon paper (Arigovindan *et al.*, *PNAS* 2013) for the deconvolution method, and the AR-Decon paper (Li *et al.*) for the cryo-EM OTF estimation and workflow. See [How to Cite](#how-to-cite).
+
 ## Table of Contents <!-- omit in toc -->
+- [How to Cite](#how-to-cite)
 - [System Requirements](#system-requirements)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Extended Usage (Post-Processing After Deconvolution)](#extended-usage-post-processing-after-deconvolution)
 - [Advanced Usage (Parameter Optimization)](#advanced-usage-parameter-optimization)
+
+## How to Cite
+If you use AR-Decon, please cite **both** of the following papers:
+
+1. **ER-Decon** (the deconvolution method and engine, ER-Decon II):
+   M. Arigovindan, J. C. Fung, D. Elnatan, V. Mennella, Y.-H. M. Chan, M. Pollard, E. Branlund, J. W. Sedat and D. A. Agard, "High-resolution restoration of 3D structures from widefield images with extreme low signal-to-noise-ratio", *Proc. Natl. Acad. Sci. USA* **110**, 17344–17349 (2013). [doi:10.1073/pnas.1315675110](https://doi.org/10.1073/pnas.1315675110)
+
+2. **AR-Decon** (cryo-EM OTF estimation and processing workflow):
+   J. Li, W. Choi, Y. Chen, S. Zheng, A. McDonald, J. W. Sedat, D. A. Agard and Y. Cheng, "Deconvolution improves cryo-EM maps", *bioRxiv* (2025). [doi:10.1101/2025.02.23.639707](https://doi.org/10.1101/2025.02.23.639707)
+
+`CITATION.cff` lists both papers. GitHub's "Cite this repository" button shows only the AR-Decon paper, so please add the ER-Decon paper as well.
 
 ## System Requirements
 ### 1. Hardware Requirements
@@ -22,15 +42,19 @@ AR-Decon requires a Linux-based operating system for proper execution. The progr
 ## Installation
 ### 1. Install Conda
 Ensure that you have either Miniconda or Anaconda installed on your Linux distribution. It is recommended to install Miniconda by following these [instructions](https://docs.anaconda.com/miniconda/).
-### 2. Set Up a Python Environment and Install AR-Decon
-Create a Python environment named `ardecon` using `conda` and install AR-Decon. Installation typically completes within 10 minutes.
+### 2. Set Up a Python Environment and Install ER-Decon II and AR-Decon
+Create a Python environment named `ardecon` using `conda`, build ER-Decon II (`core2_decon`) into it, and install AR-Decon. Installation typically completes within 10 minutes.
 ```bash
 git clone https://github.com/yifancheng-ucsf/AR-Decon.git
+git clone https://github.com/Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II.git
 cd AR-Decon
 conda env create -f environment.yml
 conda activate ardecon
+make -C ../ER-DECON-II -j install PREFIX=$CONDA_PREFIX FFTW_INC=$CONDA_PREFIX/include FFTW_LIB=$CONDA_PREFIX/lib
+make -C ../ER-DECON-II check          # optional, a few seconds; must end with "ALL PASSED"
 pip install .
 ```
+AR-Decon uses the first `core2_decon` on `PATH`. See the [ER-Decon II README](https://github.com/Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II#readme) for other ways to build it.
 ### 3. Reactivate the environment
 After installing AR-Decon, **reactivate the environment** to ensure it is fully set up:
 ```bash
@@ -48,7 +72,7 @@ The runtime of the command scales with the map’s box size. As a reference, pro
 **Note**: For detailed instructions with comprehensive examples, refer to the [**Tutorial**](tutorial/Tutorial.md).
 
 ## Extended Usage (Post-Processing After Deconvolution)
-The map after deconvolution can be post processed using Phenix (`phenix.auto_sharpen`) , bfactor (`befactor.exe`), or EMReady (`EMReady.sh`). However, if the map is too noisy, sharpening after deconvolution may not be effective. Based on our experience, AR-Decon works well with EMReady, as demonstrated in our paper.
+The map after deconvolution can be post processed using Phenix (`phenix.auto_sharpen`) , bfactor (`bfactor.exe`), or EMReady (`EMReady.sh`). However, if the map is too noisy, sharpening after deconvolution may not be effective. Based on our experience, AR-Decon works well with EMReady, as demonstrated in our paper.
 
 ### 1. Install Post-Processing Tools
 These tools are not bundled with AR-Decon and must be installed separately. You can download them from their official websites:
@@ -93,6 +117,7 @@ Optional parameters:
   --iter      50           Number of deconvolution cycles (default: 50).
   --post      method       Post-processing method (requires installation): phenix | bfactor | emready.
   --outdir    directory    Directory to save output results (default: 'ardecon').
+  --seed      N            Seed for the random cone directions of the dFSC step (default: not seeded).
   --help                   Display this help message and exit.
 
 Example:

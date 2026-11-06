@@ -18,6 +18,7 @@ print_usage() {
 	echo "  --iter      50           Number of deconvolution cycles (default: 50)"
 	echo "  --post      method       Post-processing method (requires installation): phenix | bfactor | emready"
 	echo "  --outdir    directory    Directory to save output results (default: 'ardecon')"
+	echo "  --seed      N            Seed for the random cone directions of the dFSC step (default: not seeded)"
 	echo "  --help                   Display this help message and exit"
 	echo ""
 	echo "Example:"
@@ -46,6 +47,7 @@ NONLIN="10000"
 ITER="50"
 OUTDIR="ardecon"
 POST_METHOD=""
+SEED=""
 
 # Parse arguments
 POSITIONAL=()
@@ -97,6 +99,14 @@ while [[ $# -gt 0 ]]; do
 				print_usage
 			fi
 			OUTDIR="$2"
+			shift 2
+			;;
+		--seed)
+			if [[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]]; then
+				echo "Error: --seed option requires a non-negative integer."
+				print_usage
+			fi
+			SEED="$2"
 			shift 2
 			;;
 		--post)
@@ -204,7 +214,7 @@ if [ -n "$MASK_FILE" ]; then
 		echo "${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc already existed. Skipping dFSC calculation."
 	else
 		echo "Running dfsc-0.0.1.py with a mask ..."
-		dfsc-0.0.1.py --mask "$MASK_FILE" "$HALF_MAP1" "$HALF_MAP2" --output "${OUTDIR}/${OUTPUT_STEP1}" || \
+		dfsc-0.0.1.py --mask "$MASK_FILE" "$HALF_MAP1" "$HALF_MAP2" --output "${OUTDIR}/${OUTPUT_STEP1}" ${SEED:+--seed "$SEED"} || \
 		{ echo "Error: Failed to run dfsc-0.0.1.py"; exit 1; }
 	fi
 else
@@ -212,7 +222,7 @@ else
 		echo "${OUTDIR}/${OUTPUT_STEP1}dFSC3d.mrc already existed. Skipping dFSC calculation."
 	else
 		echo "Running dfsc-0.0.1.py without a mask ..."
-		dfsc-0.0.1.py "$HALF_MAP1" "$HALF_MAP2" --output "${OUTDIR}/${OUTPUT_STEP1}" || \
+		dfsc-0.0.1.py "$HALF_MAP1" "$HALF_MAP2" --output "${OUTDIR}/${OUTPUT_STEP1}" ${SEED:+--seed "$SEED"} || \
 		{ echo "Error: Failed to run dfsc-0.0.1.py"; exit 1; }
 	fi
 fi
@@ -278,13 +288,14 @@ if echo "$DECON_D" | grep "usage: core2_decon measurement result CTF" >/dev/null
 elif echo "$DECON_S" | grep "usage: core2_decon measurement result CTF" >/dev/null 2>&1 ; then
 	DECON_BIN="core2_decon_static"
 else
-	echo "Error: Failed to run core2_decon, see $DECON_LOG"; exit 1;
+	echo "Error: Failed to run core2_decon, see $DECON_LOG";
+	echo "core2_decon is the ER-Decon II program (https://github.com/Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II); see the Installation section of README.md."; exit 1;
 fi
 
 if [ -s "$DECON_OUTPUT" ]; then
 	echo "$DECON_OUTPUT already existed. Skipping deconvolution."
 else
-	echo "Running deconvolution with $DECON_BIN ..."
+	echo "Running deconvolution with $DECON_BIN (ER-Decon II; Arigovindan et al., PNAS 2013) ..."
 	echo "Parameters: Smoothing=$SMOOTH, Nonlinearity=$NONLIN, Iterations=$ITER"
 	( time "$DECON_BIN" \
 	"$DECON_INPUT" \

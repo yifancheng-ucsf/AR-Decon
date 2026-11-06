@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use AR-Decon, please cite both the ER-Decon paper (the deconvolution method and engine, ER-Decon II) and the AR-Decon paper (cryo-EM OTF estimation and workflow), listed below."
+title: "AR-Decon: deconvolution to restore cryo-EM maps with anisotropic resolution"
+license: BSD-3-Clause
+repository-code: "https://github.com/yifancheng-ucsf/AR-Decon"
+authors:
+  - family-names: Li
+    given-names: Junrui
+  - name: "Cheng laboratory, UCSF"
+preferred-citation:
+  type: article
+  title: "Deconvolution improves cryo-EM maps"
+  authors:
+    - {family-names: Li, given-names: Junrui}
+    - {family-names: Choi, given-names: Wooyoung}
+    - {family-names: Chen, given-names: Yifei}
+    - {family-names: Zheng, given-names: Shawn}
+    - {family-names: McDonald, given-names: Angus}
+    - {family-names: Sedat, given-names: John W.}
+    - {family-names: Agard, given-names: David A.}
+    - {family-names: Cheng, given-names: Yifan}
+  journal: "bioRxiv"
+  year: 2025
+  doi: 10.1101/2025.02.23.639707
+references:
+  - type: article
+    title: "High-resolution restoration of 3D structures from widefield images with extreme low signal-to-noise-ratio"
+    authors:
+      - {family-names: Arigovindan, given-names: Muthuvel}
+      - {family-names: Fung, given-names: Jennifer C.}
+      - {family-names: Elnatan, given-names: Daniel}
+      - {family-names: Mennella, given-names: Vito}
+      - {family-names: Chan, given-names: Yee-Hung Mark}
+      - {family-names: Pollard, given-names: Michael}
+      - {family-names: Branlund, given-names: Eric}
+      - {family-names: Sedat, given-names: John W.}
+      - {family-names: Agard, given-names: David A.}
+    journal: "Proceedings of the National Academy of Sciences of the USA"
+    volume: 110
+    issue: 43
+    start: 17344
+    end: 17349
+    year: 2013
+    doi: 10.1073/pnas.1315675110
+  - type: software
+    title: "ER-Decon II"
+    repository-code: "https://github.com/Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II"
+    authors:
+      - {family-names: Arigovindan, given-names: Muthuvel}
+      - {family-names: Sedat, given-names: John W.}
+      - {family-names: Agard, given-names: David A.}

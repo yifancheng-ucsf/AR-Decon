@@ -22,6 +22,7 @@ print_usage() {
     echo "                                - 'alpha' and 'beta' are Euler angles defining the cone symmetry axis"
     echo "                                - 'apex' is the cone's apex angle"
     echo "                                (default: none)"
+    echo "  --seed      N               Seed for the random cone directions of the dFSC step (default: not seeded)"
     echo "  --help                      Display this help message and exit"
     echo ""
     echo "Examples:"
@@ -51,6 +52,7 @@ SMOOTH_SET="5e-3 1e-2 2e-2 5e-2 1e-1 2e-1 5e-1 1 2 5 1e1 2e1 5e1 1e2"
 NONLIN_SET="1 1e1 1e2 1e3 1e4 1e5 1e6 1e7"
 OUTDIR="ParamSearch"
 CONE_SET=""
+SEED=""
 
 # Parse arguments
 POSITIONAL=()
@@ -71,7 +73,7 @@ while [[ $# -gt 0 ]]; do
 				echo "Error: --iter option requires a value."
 				print_usage
 			fi
-			SIGMA="$2"
+			ITER="$2"
 			shift 2
 			;;
 		--outdir)
@@ -80,6 +82,14 @@ while [[ $# -gt 0 ]]; do
 				print_usage
 			fi
 			OUTDIR="$2"
+			shift 2
+			;;
+		--seed)
+			if [[ -z "$2" || ! "$2" =~ ^[0-9]+$ ]]; then
+				echo "Error: --seed option requires a non-negative integer."
+				print_usage
+			fi
+			SEED="$2"
 			shift 2
 			;;
 		--smooth)
@@ -182,7 +192,8 @@ if echo "$DECON_D" | grep "usage: core2_decon measurement result CTF" >/dev/null
 elif echo "$DECON_S" | grep "usage: core2_decon measurement result CTF" >/dev/null 2>&1 ; then
 	DECON_BIN="core2_decon_static"
 else
-	echo "Error: Failed to run core2_decon, see ${OUTDIR}/decon.log"; exit 1;
+	echo "Error: Failed to run core2_decon, see ${OUTDIR}/decon.log";
+	echo "core2_decon is the ER-Decon II program (https://github.com/Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II); see the Installation section of README.md."; exit 1;
 fi
 
 declare -A DFSC_LOGS
@@ -214,9 +225,9 @@ for SMOOTH in ${SMOOTH_SET} ; do
 		else
 			echo "Calculating dFSC for ${DECON_OUTPUT} ..."
 			if [ -n "$MASK_FILE" ]; then
-				dfsc-0.0.1.py "$REF_MAP" "$DECON_OUTPUT" --mask "$MASK_FILE" --output "${DFSC_DIR}/${ROOTNAME}_" > "${DFSC_DIR}/${ROOTNAME}_dFSC.log" 2>&1 &
+				dfsc-0.0.1.py "$REF_MAP" "$DECON_OUTPUT" --mask "$MASK_FILE" --output "${DFSC_DIR}/${ROOTNAME}_" ${SEED:+--seed "$SEED"} > "${DFSC_DIR}/${ROOTNAME}_dFSC.log" 2>&1 &
 			else
-				dfsc-0.0.1.py "$REF_MAP" "$DECON_OUTPUT" --output "${DFSC_DIR}/${ROOTNAME}_" > "${DFSC_DIR}/${ROOTNAME}_dFSC.log" 2>&1 &
+				dfsc-0.0.1.py "$REF_MAP" "$DECON_OUTPUT" --output "${DFSC_DIR}/${ROOTNAME}_" ${SEED:+--seed "$SEED"} > "${DFSC_DIR}/${ROOTNAME}_dFSC.log" 2>&1 &
 			fi
 			DFSC_PID=$!
 			DFSC_LOGS[$DFSC_PID]="${DFSC_DIR}/${ROOTNAME}_dFSC.log"

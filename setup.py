@@ -1,9 +1,8 @@
-import os
 from setuptools import setup, find_packages
 
-lib_dir = "ardecon/lib"
-so_files = [os.path.join(lib_dir, f) for f in os.listdir(lib_dir) if ".so" in f]
-
+# The deconvolution engine, ER-Decon II (core2_decon), is not bundled: it is
+# built from https://github.com/Biochemistry-Biophysics-Cheng-Lab/ER-DECON-II
+# and must be on PATH -- see README.md, "Installation".
 setup(
     name='ardecon',
     version='0.9.0',
@@ -14,8 +13,6 @@ setup(
     include_package_data=True,
     package_data={
         'ardecon': [
-            'bin/*',
-            'lib/*',
             'scripts/*',
         ],
     },
@@ -29,12 +26,6 @@ setup(
         'ardecon/scripts/core2_decon-000.com',
         'ardecon/scripts/param_search',
         'ardecon/scripts/dfsc-combine.py',
-    ],
-    data_files=[
-        ('lib', so_files),
-        ('bin', ['ardecon/bin/core2_decon','ardecon/bin/core2_decon_static']),
-        ('etc/conda/activate.d', ['etc/conda/activate.d/set_env.sh']),
-        ('etc/conda/deactivate.d', ['etc/conda/deactivate.d/unset_env.sh']),
     ],
     install_requires=[],
     zip_safe=False,

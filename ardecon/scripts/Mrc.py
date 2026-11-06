@@ -134,6 +134,16 @@ __license__ = 'BSD license - see PRIITHON_LICENSE.txt'
 __version__ = '0.1.1'
 
 import numpy as N
+
+
+def _frombytes(s, dtype='i1'):
+    """N.fromstring(s, dtype) in binary mode, which NumPy 2 no longer
+    supports (AR-Decon 2026-11): str is encoded as UTF-8, as fromstring did;
+    bytes are used as they are.  Returns a writable copy."""
+    if isinstance(s, str):
+        s = s.encode('utf-8')
+    return N.frombuffer(s, dtype=dtype).copy()
+
 import sys
 import os
 # Python 3 renamed __builtin__ to builtins.  Work around that without using
@@ -312,7 +322,7 @@ class Mrc:
 
         self.extHdrArray = N.recarray(shape=nz, dtype=type_descr, buf=self.e)
         if self.isByteSwapped:
-            self.extHdrArray = self.extHdrArray.newbyteorder()
+            self.extHdrArray = self.extHdrArray.view(self.extHdrArray.dtype.newbyteorder())
         self.extInts = self.extHdrArray.field('int')
         self.extFloats = self.extHdrArray.field('float')
         self.extSym = None
@@ -368,7 +378,7 @@ class Mrc:
         self.data.shape = shape
 
         if self.isByteSwapped:
-            self.data = self.data.newbyteorder()
+            self.data = self.data.view(self.data.dtype.newbyteorder())
 
 
     def setTitle(self, s, i=-1, push=False, truncate=False):
@@ -980,7 +990,7 @@ class Mrc2:
             self.hdr.mmm1 = (0.0, 0.0, 0.0)
             self.hdr.nspg = 0
             self.hdr.next = 0
-            self.hdr.dvid = 0xc0a0
+            self.hdr.dvid = -16224  # 0xc0a0 as a signed 16-bit value
             self.hdr.nblank = 0
             self.hdr.ntst = 0
             self.hdr.blank = 0
@@ -1159,7 +1169,7 @@ class Mrc2:
             self._extHdrArray = N.recarray(shape=nSecs, dtype=type_descr,
                                            buf=self.e)
             if self._fileIsByteSwapped:
-                self._extHdrArray = self._extHdrArray.newbyteorder()
+                self._extHdrArray = self._extHdrArray.view(self._extHdrArray.dtype.newbyteorder())
             self.extInts = self._extHdrArray.field('int')
             self.extFloats = self._extHdrArray.field('float')
             self.extSym = None
@@ -1290,7 +1300,7 @@ class Mrc2:
         self._extHdrNumInts = self.hdr.NumIntegers = numInts
         self._extHdrNumFloats = self.hdr.NumFloats = numFloats
         if hdrHasExtType(self.hdr):
-            self.hdr.exttyp = N.fromstring('AGAR', dtype='i1')
+            self.hdr.exttyp = _frombytes('AGAR', dtype='i1')
         else:
             if (hdrIsInPriismFormat(self.hdr) or
                 (self.hdr.nspg != 0 and self.hdr.nspg != 1 and
@@ -1375,7 +1385,7 @@ class Mrc2:
         self.hdr.NumIntegers = 0
         self.hdr.NumFloats = 0
         if hdrHasExtType(self.hdr):
-            self.hdr.exttyp = N.fromstring('MRC0', dtype='i1')
+            self.hdr.exttyp = _frombytes('MRC0', dtype='i1')
         self._extHdrSize = nbytes
         self._extHdrNumInts = 0
         self._extHdrNumFloats = 0
@@ -1461,7 +1471,7 @@ class Mrc2:
             raise RuntimeError('Header does not store a string code for the '
                                'extended header format')
 
-        self.hdr.exttyp = N.fromstring(fmt, dtype='i1')
+        self.hdr.exttyp = _frombytes(fmt, dtype='i1')
         self.hdr.next = nbytes
         self._extHdrSize = nbytes
         self._extHdrNumInts = 0
@@ -2066,7 +2076,7 @@ class HdrBase(object):
         """
 
         n = max(0, min(self.NumTitles, 10))
-        b = N.fromstring(s, dtype='i1')
+        b = _frombytes(s, dtype='i1')
         if b.shape[0] > 80:
             if not truncate:
                 raise ValueError('Mrc only support title up to 80 characters')
@@ -3174,9 +3184,9 @@ class ManagedTitleArray(object):
     def __str__(self):
         s = '['
         for i in range(0, self._array.shape[0] - 1):
-            s = s + "'" + self._array[i].tostring() + "' ,"
+            s = s + "'" + self._array[i].tobytes() + "' ,"
         if self._array.shape[0] > 0:
-            s = s + "'" + self._array[-1].tostring() + "']"
+            s = s + "'" + self._array[-1].tobytes() + "']"
         else:
             s = s + ']'
         return s
@@ -3188,10 +3198,10 @@ class ManagedTitleArray(object):
 
     def __getitem__(self, key):
         if isinstance(key, slice):
-            return [self._array[i].tostring() for i in
+            return [self._array[i].tobytes() for i in
                     range(*key.indices(self._array.shape[0]))]
         else:
-            return self._array[key].tostring()
+            return self._array[key].tobytes()
 
 
     def __setitem__(self, key, value):
@@ -3209,7 +3219,7 @@ class ManagedTitleArray(object):
                     self[i] = value[j]
                     j += 1
         else:
-            b = N.fromstring(value, dtype='i1')
+            b = _frombytes(value, dtype='i1')
             if b.shape[0] >= self._array.shape[1]:
                 self._array[key][:] = b[0:self._array.shape[1]]
             else:
@@ -3974,7 +3984,7 @@ def init_simple(hdr, mode, nxOrShape, ny=None, nz=None, isByteSwapped=None):
     hdr.NumTitles = 0
     hdr.title = ' ' * 80
     if hdrIsInPriismFormat(hdr):
-        hdr.dvid = 0xc0a0
+        hdr.dvid = -16224  # 0xc0a0 as a signed 16-bit value
         hdr.nblank = 0
         hdr.blank = 0
         hdr.mm2 = (0, 10000)
@@ -3990,12 +4000,12 @@ def init_simple(hdr, mode, nxOrShape, ny=None, nz=None, isByteSwapped=None):
         hdr.wave = (999, 0, 0, 0, 0)
     else:
         hdr.extra0 = 0
-        hdr.exttyp = N.fromstring('AGAR', dtype='i1')
+        hdr.exttyp = _frombytes('AGAR', dtype='i1')
         hdr.nversion = 20140
         hdr.extra1 = 0
         hdr.extra2 = 0
         hdr.extra3 = 0
-        hdr.map = N.fromstring('MAP ', dtype='i1')
+        hdr.map = _frombytes('MAP ', dtype='i1')
         if isByteSwapped is None:
             isByteSwapped = isSwappedDtype(hdr._array.dtype)
         if isByteSwapped:
@@ -4190,16 +4200,16 @@ def hdrChangeToMrc2014Format(hdr):
         hdr._array.dtype = N.dtype(mrc2014Hdr_dtype)
         isswapped = False
     hdr = Hdr2014Priism(hdr._array)
-    hdr.map = N.fromstring('MAP ', dtype='i1')
+    hdr.map = _frombytes('MAP ', dtype='i1')
     hdr.nversion = 20140
     if nt > 1:
         hdr.nspg = 401
         hdr.m[2] = max(hdr.Num[2], 0) // nt
         hdr.setSpacing(dx, dy, dz)
     if hdr.nspg == 0 or hdr.nspg == 401:
-        hdr.exttyp = N.fromstring('AGAR', dtype='i1')
+        hdr.exttyp = _frombytes('AGAR', dtype='i1')
     else:
-        hdr.exttyp = N.fromstring('MRC0', dtype='i1')
+        hdr.exttyp = _frombytes('MRC0', dtype='i1')
     hdr.origin = (origx, origy, origz)
     if isswapped:
         hdr.machst = (_SYSSWAPST0, _SYSSWAPST1, 0, 0)
@@ -4238,7 +4248,7 @@ def hdrChangeToPriismFormat(hdr):
         hdr.nspg = 0
         if spg == 401:
             hdr.NumTimes = hdr.Num[2] // max(hdr.m[2], 1)
-    hdr.dvid = 0xc0a0
+    hdr.dvid = -16224  # 0xc0a0 as a signed 16-bit value
     hdr.nblank = 0
     hdr.blank = 0
     hdr.mm2 = (0.0, 0.0)
@@ -4362,10 +4372,10 @@ def getExtHeaderFormat(hdr):
     """
 
     if hdrHasExtType(hdr):
-        if (N.array_equal(hdr.exttyp, N.fromstring('MRC0', dtype='i1')) or
-            N.array_equal(hdr.exttyp, N.fromstring('CCP4', dtype='i1'))):
+        if (N.array_equal(hdr.exttyp, _frombytes('MRC0', dtype='i1')) or
+            N.array_equal(hdr.exttyp, _frombytes('CCP4', dtype='i1'))):
             fmt = 0
-        elif N.array_equal(hdr.exttyp, N.fromstring('AGAR', dtype='i1')):
+        elif N.array_equal(hdr.exttyp, _frombytes('AGAR', dtype='i1')):
             fmt = 1
         else:
             fmt = -1
@@ -4487,40 +4497,40 @@ def checkDtypeSwapping(dtype):
 # property definitions for the HdrBase or HdrPriism classes.
 mrcHdrFields = [
     ('3i4', 'Num'),
-    ('1i4', 'PixelType'),
+    ('i4', 'PixelType'),
     ('3i4', 'mst'),
     ('3i4', 'm'),
     ('3f4', 'd'),
     ('3f4', 'angle'),
     ('3i4', 'axis'),
     ('3f4', 'mmm1'),
-    ('1i4', 'nspg'),
-    ('1i4', 'next'),
-    ('1i2', 'dvid'),
-    ('1i2', 'nblank'),
-    ('1i4', 'ntst'),
+    ('i4', 'nspg'),
+    ('i4', 'next'),
+    ('i2', 'dvid'),
+    ('i2', 'nblank'),
+    ('i4', 'ntst'),
     ('24i1', 'blank'),
-    ('1i2', 'NumIntegers'),
-    ('1i2', 'NumFloats'),
-    ('1i2', 'sub'),
-    ('1i2', 'zfac'),
+    ('i2', 'NumIntegers'),
+    ('i2', 'NumFloats'),
+    ('i2', 'sub'),
+    ('i2', 'zfac'),
     ('2f4', 'mm2'),
     ('2f4', 'mm3'),
     ('2f4', 'mm4'),
-    ('1i2', 'ImageType'),
-    ('1i2', 'LensNum'),
-    ('1i2', 'n1'),
-    ('1i2', 'n2'),
-    ('1i2', 'v1'),
-    ('1i2', 'v2'),
+    ('i2', 'ImageType'),
+    ('i2', 'LensNum'),
+    ('i2', 'n1'),
+    ('i2', 'n2'),
+    ('i2', 'v1'),
+    ('i2', 'v2'),
     ('2f4', 'mm5'),
-    ('1i2', 'NumTimes'),
-    ('1i2', 'ImgSequence'),
+    ('i2', 'NumTimes'),
+    ('i2', 'ImgSequence'),
     ('3f4', 'tilt'),
-    ('1i2', 'NumWaves'),
+    ('i2', 'NumWaves'),
     ('5i2', 'wave'),
     ('3f4', 'zxy0'),
-    ('1i4', 'NumTitles'),
+    ('i4', 'NumTitles'),
     ('(10,80)i1', 'title'),
 ]
 
@@ -4540,38 +4550,38 @@ mrcHdr_dtype = list(zip(mrcHdrNames, mrcHdrFormats))
 # tilt.
 mrc2014HdrFields = [
     ('3i4', 'Num'),
-    ('1i4', 'PixelType'),
+    ('i4', 'PixelType'),
     ('3i4', 'mst'),
     ('3i4', 'm'),
     ('3f4', 'd'),
     ('3f4', 'angle'),
     ('3i4', 'axis'),
     ('3f4', 'mmm1'),
-    ('1i4', 'nspg'),
-    ('1i4', 'next'),
+    ('i4', 'nspg'),
+    ('i4', 'next'),
     ('4i1', 'extra0'),
-    ('1i4', 'ntst'),
+    ('i4', 'ntst'),
     ('4i1', 'exttyp'),
-    ('1i4', 'nversion'),
+    ('i4', 'nversion'),
     ('16i1', 'extra1'),
-    ('1i2', 'NumIntegers'),
-    ('1i2', 'NumFloats'),
-    ('1i2', 'sub'),
-    ('1i2', 'zfac'),
+    ('i2', 'NumIntegers'),
+    ('i2', 'NumFloats'),
+    ('i2', 'sub'),
+    ('i2', 'zfac'),
     ('24i1', 'extra2'),
-    ('1i2', 'ImageType'),
-    ('1i2', 'LensNum'),
-    ('1i2', 'n1'),
-    ('1i2', 'n2'),
-    ('1i2', 'v1'),
-    ('1i2', 'v2'),
+    ('i2', 'ImageType'),
+    ('i2', 'LensNum'),
+    ('i2', 'n1'),
+    ('i2', 'n2'),
+    ('i2', 'v1'),
+    ('i2', 'v2'),
     ('12i1', 'extra3'),
     ('3f4', 'tilt'),
     ('3f4', 'origin'),
     ('4i1', 'map'),
     ('4u1', 'machst'),
-    ('1f4', 'rms'),
-    ('1i4', 'NumTitles'),
+    ('f4', 'rms'),
+    ('i4', 'NumTitles'),
     ('(10,80)i1', 'title'),
 ]
 
